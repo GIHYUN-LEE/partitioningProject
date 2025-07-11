@@ -1,4 +1,4 @@
-# 🧪 MySQL Partition
+# 🧪 연체 위험도 분석
 
 MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 성능 차이를 테스트하기 위한 미니 프로젝트입니다.
 
@@ -17,31 +17,58 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 - **DBMS**: MySQL 8.2.0
 - **Tool**: DBeaver, MySQL
 - **OS**: Windows 10 / Ubuntu 22.04
+- 
 
 ---
 
-# 📂 주요 실험 내용
+# 📂 데이터 셋
+데이터 출처: https://www.aihub.or.kr
 
-| 유형 | 설명 | 컬럼명 |
-|------|------|------|
-| `RANGE` | 연체일자 년도 기준으로 분리 | `연체일자_B0M` 기준 |
-| `LIST` |  연체일자 년도 기준으로 분리 | `연체일자_B0M` 기준 |
+데이터 크기 : 총 100,000건 | 
+파일 크기 : 5.6MB (.csv, UTF-8 인코딩)
+
+### 전처리 과정
+1. python을 이용한 가상의 데이터 추가
+`연체일자_B0M`, `연체잔액_B0M `, `연체잔액_일시불_B0M `, `연체잔액_할부_B0M` 의 컬럼을 값을 이용한 연체 위험도를 표시하기 위해 가상의 데이터를 추가
+
+2. 발급회원번호 format
+발급회원번호의 값이 `SYN_0`으로 제공되어 있어 파티션의 KEY값 사용하기 위해 INT 형식으로 포멧 후 primary key 등록
+	 ```
+	-- SYN_0 으로 제공된 값 -> 0 으로 변경
+ 	UPDATE real_dataset SET 발급회원번호 = REPLACE(발급회원번호, 'SYN_', '');
+
+	-- 0,1,2 .. 으로 변경된 값 INT 타입으로 타입변경
+	ALTER TABLE real_dataset MODIFY COLUMN 발급회원번호 int;
+
+ 	-- 발급회원번호 primary key로 등록
+	ALTER TABLE real_dataset MODIFY COLUMN 발급회원번호 int primary key;
+ 	```
+
+
+
+### 최종 테이블 구조
+
+| 컬럼명 | 데이터 타입 |
+|------|------|
+| 발급회원번호 | INT (PK) |
+| 연체일자_B0M | DATE (PK) |
+| 남녀구분코드 | INT |
+| 연령 | VARCHAR(20) |
+| 거주시도명 | VARCHAR(20) |
+| 월중평잔_일시불_B0M | INT |
+| 연체잔액_B0M | INT |
+| 연체잔액_일시불_B0M | INT |
+| 연체잔액_할부 | INT |
+
 
 ---
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/8dde7499-daf4-4063-81c9-873813358ed4" width="200"/>
-  <img src="https://github.com/user-attachments/assets/04370367-06a0-4da1-9551-5194bd5a2ebf" width="200"/>
-  <br>
-  <span style="font-size:14px">좌: 파티셔닝한 테이블 구조 | 우: 오리지널 데이터 테이블 구조</span>
-</p>
-
-
 
 # 📄 파티션 테이블 생성
-데이터 테이블 구조(임시데이터)
-<img width="1285" height="114" alt="Image" src="https://github.com/user-attachments/assets/9c5e025c-93ec-4bfb-a543-064910d15f6b" />
+
+
 
 위 이미를 토대로 제작된 파티셔닝 테이블 코드입니다.
+
 <details>
 <summary>LIST + HAST</summary>
   
