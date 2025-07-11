@@ -26,12 +26,13 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 파일 크기 : 5.6MB (.csv, UTF-8 인코딩)
 
 ### 전처리 과정
-1. python을 이용한 가상의 데이터 추가
+**1. python을 이용한 가상의 데이터 추가** <br>
 `연체일자_B0M`, `연체잔액_B0M `, `연체잔액_일시불_B0M `, `연체잔액_할부_B0M` 의 컬럼을 값을 이용한 연체 위험도를 표시하기 위해 가상의 데이터를 추가
 
-2. 발급회원번호 format
+**2. 발급회원번호 format** <br>
 발급회원번호의 값이 `SYN_0`으로 제공되어 있어 파티션의 KEY값 사용하기 위해 INT 형식으로 포멧 후 primary key 등록
-	 ```
+	 
+  ```
 	-- SYN_0 으로 제공된 값 -> 0 으로 변경
  	UPDATE real_dataset SET 발급회원번호 = REPLACE(발급회원번호, 'SYN_', '');
 
@@ -40,23 +41,23 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 
  	-- 발급회원번호 primary key로 등록
 	ALTER TABLE real_dataset MODIFY COLUMN 발급회원번호 int primary key;
- 	```
+ ```
 
 
 
 ### 최종 테이블 구조
 
-| 컬럼명 | 데이터 타입 |
-|------|------|
-| 발급회원번호 | INT (PK) |
-| 연체일자_B0M | DATE (PK) |
-| 남녀구분코드 | INT |
-| 연령 | VARCHAR(20) |
-| 거주시도명 | VARCHAR(20) |
-| 월중평잔_일시불_B0M | INT |
-| 연체잔액_B0M | INT |
-| 연체잔액_일시불_B0M | INT |
-| 연체잔액_할부 | INT |
+| 컬럼명 | 데이터 타입 | 설명글 |
+|------|------|------|
+| 발급회원번호 | INT (PK) |------|
+| 연체일자_B0M | DATE (PK) |------|
+| 남녀구분코드 | INT |------|
+| 연령 | VARCHAR(20) |------|
+| 거주시도명 | VARCHAR(20) |------|
+| 월중평잔_일시불_B0M | INT |------|
+| 연체잔액_B0M | INT |------|
+| 연체잔액_일시불_B0M | INT |------|
+| 연체잔액_할부 | INT |------|
 
 
 ---
@@ -73,7 +74,7 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 <details>
 <summary>LIST + HAST</summary>
   
-  ```
+  ```sql
   CREATE TABLE list_hash (
       발급회원번호 INT,
       남녀구분코드 INT,
@@ -104,7 +105,7 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 <details>
 <summary>LIST + KEY</summary>
   
-  ```
+  ```sql
   CREATE TABLE list_key (
     발급회원번호 INT,
     남녀구분코드 INT,
@@ -134,7 +135,7 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 <details>
 <summary>RANGE + HASH</summary>
   
-  ```
+  ```sql
   CREATE TABLE range_hash (
   	발급회원번호 INT,
     남녀구분코드 INT,
@@ -164,7 +165,7 @@ SUBPARTITIONS 5 (
 <details>
 <summary>RANGE + KEY</summary>
   
-  ```
+  ```sql
   alter table range_key(
 	발급회원번호 INT,
     남녀구분코드 INT,
@@ -192,6 +193,7 @@ SUBPARTITIONS 5 (
 <br>
 
 # 📢 분석
+
 <img width="887" height="298" alt="Image" src="https://github.com/user-attachments/assets/7ebae2ae-4e38-469e-9338-9aaa6b3c83a2" /><br>
 파티션 테이블에서 조회 결과
 
