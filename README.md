@@ -50,7 +50,8 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 | 컬럼명 | 데이터 타입 | 설명글 |
 |------|------|------|
 | 발급회원번호 | INT (PK) |------|
-| 연체일자_B0M | DATE (PK) |------|
+| 연체연도 | INT (PK) |------|
+| 연체일자_B0M | DATE |------|
 | 남녀구분코드 | INT |------|
 | 연령 | VARCHAR(20) |------|
 | 거주시도명 | VARCHAR(20) |------|
@@ -143,12 +144,13 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
     거주시도명 VARCHAR(20),
     월중평잔_일시불_B0M INT,
     연체일자_B0M DATE,
+    연체연도 INT,
     연체잔액_B0M INT,
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
-    primary key(발급회원번호, 연체일자_B0M)
+    primary key(발급회원번호, 연체연도)
 ) 
-PARTITION BY RANGE (YEAR(연체일자_B0M))
+PARTITION BY RANGE (연체연도)
 SUBPARTITION BY HASH (발급회원번호)
 SUBPARTITIONS 5 (
   PARTITION p_before_2005 VALUES LESS THAN (2005),
@@ -166,25 +168,27 @@ SUBPARTITIONS 5 (
 <summary>RANGE + KEY</summary>
   
   ```sql
-  alter table range_key(
-	발급회원번호 INT,
+  CREATE TABLE range_key (
+  	발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
     거주시도명 VARCHAR(20),
     월중평잔_일시불_B0M INT,
     연체일자_B0M DATE,
+    연체연도 INT,
     연체잔액_B0M INT,
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
-    primary key(발급회원번호, 연체일자_B0M)
-)PARTITION BY RANGE (YEAR(연체일자_B0M)) SUBPARTITION BY KEY (발급회원번호)
+    primary key(발급회원번호, 연체연도)
+) 
+PARTITION BY LIST (연체연도)
+SUBPARTITION BY KEY (발급회원번호)
 SUBPARTITIONS 5 (
-    PARTITION p2021 VALUES LESS THAN (2005),
-    PARTITION p2022 VALUES LESS THAN (2010),
-    PARTITION p2023 VALUES LESS THAN (2015),
-    PARTITION p2024 VALUES LESS THAN (2020),
-    PARTITION p2025 VALUES LESS THAN (2025),
-    PARTITION pMAX VALUES LESS THAN MAXVALUE
+ 	PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
+  	PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
+    PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
+    PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
+    PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
 );
   
   ```
