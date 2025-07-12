@@ -200,9 +200,30 @@ SUBPARTITIONS 5 (
 
 <img width="887" height="298" alt="Image" src="https://github.com/user-attachments/assets/7ebae2ae-4e38-469e-9338-9aaa6b3c83a2" /><br>
 파티션 테이블에서 조회 결과
-
-
-
+<br>
+각 코드별 테스트
+<br>
+<img width="452" height="118" alt="Image" src="https://github.com/user-attachments/assets/b07b65a0-02a4-4b66-80d3-617e98f70cbd" />
+<br>
+해당 코드를 통해 쿼리문을 100번 반복하여 소요된 시간을 측정
+<br>
+LIST<br>
+<img width="670" height="16" alt="Image" src="https://github.com/user-attachments/assets/784a36af-89f0-4beb-839e-d5200672e98d" />
+<br>
+RANGE<br>
+<img width="669" height="19" alt="Image" src="https://github.com/user-attachments/assets/c2148f1c-9d98-46a0-b742-52b91fe60e46" />
+<br>
+LIST + HASH<br>
+<img width="673" height="21" alt="Image" src="https://github.com/user-attachments/assets/58cae26d-b946-423f-bfc7-e7fcbaca81ef" />
+<br>
+LIST + KEY<br>
+<img width="676" height="19" alt="Image" src="https://github.com/user-attachments/assets/8ede0c1c-51e8-4e5d-b2af-e64d5df99b5a" />
+<br>
+RANGE + HASH<br>
+<img width="679" height="18" alt="Image" src="https://github.com/user-attachments/assets/b6061047-406a-4e62-8089-22914795e21f" />
+<br>
+RANGE + KEY<br><img width="671" height="19" alt="Image" src="https://github.com/user-attachments/assets/2fd0d4f4-0e7d-4191-9f00-77bee4790fd1" />
+<br>
 # 🚀 트러블 슈팅
 
 ## 🧠아이디어 정하기
