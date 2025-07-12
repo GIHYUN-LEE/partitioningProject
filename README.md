@@ -304,7 +304,7 @@ RANGE + KEY<br><img width="671" height="19" alt="Image" src="https://github.com/
   에러 발생
   
 - **해결 방법**  
-  year()사용하여 column을 생성하여 사용으로 해결
+  연체연도 column 생성 후 해당 column을 통해 파티셔닝 진행
     
   ✅ *문제 해결 완료*
 
