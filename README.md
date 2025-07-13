@@ -2,10 +2,22 @@
 대규모 연체 이력 데이터를 기반으로 MySQL의 파티셔닝 전략(RANGE, LIST, HASH 등)을 적용하고, 전략별 쿼리 성능을 분석한 프로젝트입니다.
 
 ---
+# 👥팀소개
+<div align="center">
+  
+|이제현|김동민|이기현|장송하|
+|:---:|:---:|:---:|:---:|
+|[]()|[kddmmm](https://github.com/kddmmm)|[GIHYUN-LEE](https://github.com/GIHYUN-LEE)|[jangongha](https://github.com/songhajang)|
+|<img width="200" height="250" alt="Image" src="" />|<img width="200" height="250" alt="Image" src="https://github.com/user-attachments/assets/0a3636dc-b947-4d83-ae30-6dbb5708b189" />|<img width="200" height="250" alt="Image" src="" />|<img width="200" height="250" alt="Image" src="https://github.com/user-attachments/assets/158494bb-76c3-41b3-b457-213f6add7b3b" />|
+  
+</div>
+
+<br>
+
 
 ### 📌 파티셔닝이란
 - **논리적으로는 하나의 테이블**, 물리적으로 여러 테이블로 나누어 관리하는 기법
-- **대용량 테이블을 분할하여 성능 향상 및 관리 용이성 확보** 효능이 있다.
+- **대용량 테이블을 분할하여 성능 향상 및 관리 용이성 확보** 등의 효능이 있다.
 
 
 # 🎯 목적
