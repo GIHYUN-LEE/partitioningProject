@@ -3,7 +3,7 @@
 
 ---
 
-### 📌 파티셔닝의 의미
+### 📌 파티셔닝이란
 - **논리적으로는 하나의 테이블**, 물리적으로 여러 테이블로 나누어 관리하는 기법
 - **대용량 테이블을 분할하여 성능 향상 및 관리 용이성 확보** 효능이 있다.
 
@@ -11,7 +11,6 @@
 # 🎯 목적
 
 - MySQL 파티셔닝 기능(`RANGE`, `LIST`, `HASH`, `KEY`) 이해
-- `EXPLAIN`, `SELECT`, `INSERT` 등을 통해 파티션 분기 여부 확인
 - 파티셔닝 기능별 `PROCEDURE`을 통해 성능 차이 비교 및 분석
 
 ## ⚙️ 실험 시나리오
@@ -79,12 +78,11 @@
 # ✍️ 파티셔닝 테이블 제작
 아래 테이블 코드는 **최종 테이블 구조**를 토대로 파티셔닝기능을 추가하여 제작한  코드입니다.
 
-**LIST 파티셔닝 코드**
-<details>
-<summary>LIST</summary>
+## 1. LIST 파티셔닝 코드
+### 1-1. LIST 파티셔닝
 
   ```sql
-  CREATE TABLE list_ (
+  CREATE TABLE list (
     발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
@@ -96,21 +94,27 @@
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
     primary key(발급회원번호, 연체연도)
-)
-PARTITION BY LIST COLUMNS (연체연도) (
-    PARTITION p_2005 VALUES IN (2000, 2001, 2002, 2003, 2004, 2005),
-    PARTITION p_2010 VALUES IN (2006, 2007, 2008, 2009, 2010),
-    PARTITION p_2015 VALUES IN (2011, 2012, 2013, 2014, 2015),
-    PARTITION p_2020 VALUES IN (2016, 2017, 2018, 2019, 2020),
-    PARTITION p_2025 VALUES IN (2021, 2022, 2023, 2024, 2025)
-);
+) PARTITION BY LIST (연체연도)(
+		PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
+		PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
+		PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
+		PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
+		PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
+	);
+
+  -- 데이터 삽입
+  INSERT INTO list
+  (발급회원번호, 남녀구분코드, 연령, 거주시도명, 월중평잔_일시불_B0M, 연체일자_B0M, 연체잔액_B0M, 연체잔액_일시불_B0M, 연체잔액_할부_B0M, 연체연도)
+  SELECT 발급회원번호, 남녀구분코드, 연령, 거주시도명, 월중평잔_일시불_B0M, 연체일자_B0M, 연체잔액_B0M, 연체잔액_일시불_B0M, 연체잔액_할부_B0M, 연체연도
+  FROM real_dataset;
   
   ```
+LIST 파티셔닝을 통해 만들어진 `list` 테이블에 대한 이미지입니다.
+<img width="1038" height="123" alt="리스트 파티셔닝 확인" src="https://github.com/user-attachments/assets/18d939d8-b6c3-42b2-be56-ef75cb5191a2" />
 
-</details>
 
-<details>
-<summary>LIST+HASH</summary>
+
+### 1-2. LIST+HASH 파티셔닝
   
   ```sql
  CREATE TABLE list_hash (
@@ -125,23 +129,30 @@ PARTITION BY LIST COLUMNS (연체연도) (
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
     primary key(발급회원번호, 연체연도)
-) PARTITION BY LIST (연체연도)
-   SUBPARTITION BY HASH(발급회원번호)
-   SUBPARTITIONS 5(
-      PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
-      PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
-      PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
-      PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
-      PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
-   );
+) PARTITION BY list (연체연도)
+	SUBPARTITION BY hash(발급회원번호)
+	SUBPARTITIONS 5(
+		PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
+		PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
+		PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
+		PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
+		PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
+	);
+
+-- 데이터 삽입
+INSERT INTO list_hash
+(연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M, 연체연도,연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M)
+SELECT 연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M,year(연체일자_B0M),연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M
+FROM real_dataset;
   
   ```
 
-</details>
+LIST+HASH 파티셔닝을 통해 만들어진 `list_hash` 테이블에 대한 이미지입니다.
+<img width="1040" height="507" alt="리스트-해쉬 파티셔닝 확인" src="https://github.com/user-attachments/assets/71926527-e306-49be-b8b4-00375cbe1a8d" />
 
 
-<details>
-<summary>LIST+KEY</summary>
+
+### 1-3. LIST+KEY 파티셔닝
   
   ```sql
  CREATE TABLE list_key (
@@ -150,66 +161,78 @@ PARTITION BY LIST COLUMNS (연체연도) (
     연령 VARCHAR(20),
     거주시도명 VARCHAR(20),
     월중평잔_일시불_B0M INT,
-    연체일자_B0M date,
+    연체일자_B0M DATE,
     연체연도 INT,
     연체잔액_B0M INT,
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
     primary key(발급회원번호, 연체연도)
-) PARTITION BY LIST (연체연도)
-   SUBPARTITION BY KEY(발급회원번호)
-   SUBPARTITIONS 5(
-      PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
-      PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
-      PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
-      PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
-      PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
-   );
+) PARTITION BY list (연체연도)
+	SUBPARTITION BY key(발급회원번호)
+	SUBPARTITIONS 5(
+		PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
+		PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
+		PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
+		PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
+		PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
+	);
+
+-- 데이터 삽입
+INSERT INTO list_key
+(연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M, 연체연도,연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M)
+SELECT 연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M,year(연체일자_B0M),연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M
+FROM real_dataset;
   
   ```
 
-생성된 LIST+KEY 파티션 확인 표
-<img width="887" height="298" alt="Image" src="https://github.com/user-attachments/assets/7ebae2ae-4e38-469e-9338-9aaa6b3c83a2" />
-</details>
+LIST+KEY 파티셔닝을 통해 만들어진 `list_key` 테이블에 대한 이미지입니다.
+<img width="1040" height="510" alt="리스트-키 파티셔닝 확인" src="https://github.com/user-attachments/assets/daa5d1a4-e67b-4b24-afd7-a28376a813ff" />
+
 
 ---
 
-**RANGE 파티셔닝 코드**
-<details>
-<summary>RANGE</summary>
+## 2. RANGE 파티셔닝 코드
+
+### 2-1. RANGE 파티셔닝
 
   ```sql
-  CREATE TABLE range_ (
+  CREATE TABLE p_range (
     발급회원번호 INT,
-     남녀구분코드 INT,
-     연령 VARCHAR(20),
-     거주시도명 VARCHAR(20),
-     월중평잔_일시불_B0M INT,
-     연체일자_B0M DATE,
-     연체연도 INT, 
-     연체잔액_B0M INT,
-     연체잔액_일시불_B0M INT,
-     연체잔액_할부_B0M INT,
-    PRIMARY KEY (발급회원번호, 연체연도)
-)
-PARTITION BY RANGE (연체연도) (
-    PARTITION p_2005 VALUES LESS THAN (2005),
-    PARTITION p_2010 VALUES LESS THAN (2010), 
-    PARTITION p_2015 VALUES LESS THAN (2015),
-    PARTITION p_2020 VALUES LESS THAN (2020),
-    PARTITION p_critical VALUES LESS THAN MAXVALUE
-);
+    남녀구분코드 INT,
+    연령 VARCHAR(20),
+    거주시도명 VARCHAR(20),
+    월중평잔_일시불_B0M INT,
+    연체일자_B0M DATE,
+    연체연도 INT,
+    연체잔액_B0M INT,
+    연체잔액_일시불_B0M INT,
+    연체잔액_할부_B0M INT,
+    primary key(발급회원번호, 연체연도)
+) PARTITION BY range (연체연도)(
+		PARTITION P2005 VALUES LESS THAN (2005),
+		PARTITION P2010 VALUES LESS THAN (2010),
+		PARTITION P2015 VALUES LESS THAN (2015),
+		PARTITION P2020 VALUES LESS THAN (2020),
+		PARTITION P2025 VALUES LESS THAN MAXVALUE
+	);
+
+  -- 데이터 삽입
+  INSERT INTO p_range
+  (발급회원번호, 남녀구분코드, 연령, 거주시도명, 월중평잔_일시불_B0M, 연체일자_B0M, 연체잔액_B0M, 연체잔액_일시불_B0M, 연체잔액_할부_B0M, 연체연도)
+  SELECT 발급회원번호, 남녀구분코드, 연령, 거주시도명, 월중평잔_일시불_B0M, 연체일자_B0M, 연체잔액_B0M, 연체잔액_일시불_B0M, 연체잔액_할부_B0M, 연체연도
+  FROM real_dataset;
   
   ```
+RANGE 파티셔닝을 통해 만들어진 `p_range` 테이블에 대한 이미지입니다.
+<img width="1042" height="122" alt="레인지 파티셔닝 확인" src="https://github.com/user-attachments/assets/7bec90de-dc54-44e4-9549-8f8570e6c390" />
 
-</details>
 
-<details>
-<summary>RANGE+HASH</summary>
+
+### 2-2. RANGE+HASH 파티셔닝
   
   ```sql
  CREATE TABLE range_hash (
-  	발급회원번호 INT,
+    발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
     거주시도명 VARCHAR(20),
@@ -220,28 +243,34 @@ PARTITION BY RANGE (연체연도) (
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
     primary key(발급회원번호, 연체연도)
-) 
-PARTITION BY RANGE (연체연도)
-SUBPARTITION BY HASH (발급회원번호)
-SUBPARTITIONS 5 (
-  PARTITION p_before_2005 VALUES LESS THAN (2005),
-  PARTITION p_before_2010 VALUES LESS THAN (2010),
-  PARTITION p_before_2015 VALUES LESS THAN (2015),
-  PARTITION p_before_2020 VALUES LESS THAN (2020),
-  PARTITION p_before_2025 VALUES LESS THAN MAXVALUE
-);
+) PARTITION BY range (연체연도)
+	SUBPARTITION BY HASH(발급회원번호)
+	SUBPARTITIONS 5(
+		PARTITION P2005 VALUES LESS THAN (2005),
+		PARTITION P2010 VALUES LESS THAN (2010),
+		PARTITION P2015 VALUES LESS THAN (2015),
+		PARTITION P2020 VALUES LESS THAN (2020),
+		PARTITION P2025 VALUES LESS THAN MAXVALUE
+	);
+
+-- 데이터 삽입
+INSERT INTO range_hash
+(연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M, 연체연도,연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M)
+SELECT 연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M,year(연체일자_B0M),연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M
+FROM real_dataset;
   
   ```
 
-</details>
+RANGE+HASH 파티셔닝을 통해 만들어진 `range_hash` 테이블에 대한 이미지입니다.
+<img width="1042" height="503" alt="레인지-해쉬 파티셔닝 확인" src="https://github.com/user-attachments/assets/49cbb1c3-1073-4748-b344-2a92e63cba1e" />
 
 
-<details>
-<summary>RANGE+KEY</summary>
+
+### 2-3. RANGE+KEY 파티셔닝
   
   ```sql
  CREATE TABLE range_key (
-  	발급회원번호 INT,
+    발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
     거주시도명 VARCHAR(20),
@@ -252,34 +281,119 @@ SUBPARTITIONS 5 (
     연체잔액_일시불_B0M INT,
     연체잔액_할부_B0M INT,
     primary key(발급회원번호, 연체연도)
-) 
-PARTITION BY LIST (연체연도)
-SUBPARTITION BY KEY (발급회원번호)
-SUBPARTITIONS 5 (
- 	PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
-  	PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
-    PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
-    PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
-    PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
-);
+) PARTITION BY range (연체연도)
+	SUBPARTITION BY key(발급회원번호)
+	SUBPARTITIONS 5(
+		PARTITION P2005 VALUES LESS THAN (2005),
+		PARTITION P2010 VALUES LESS THAN (2010),
+		PARTITION P2015 VALUES LESS THAN (2015),
+		PARTITION P2020 VALUES LESS THAN (2020),
+		PARTITION P2025 VALUES LESS THAN MAXVALUE
+	);
+
+-- 데이터 삽입
+INSERT INTO range_key
+(연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M, 연체연도,연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M)
+SELECT 연령,발급회원번호,남녀구분코드 ,거주시도명,월중평잔_일시불_B0M,연체일자_B0M,year(연체일자_B0M),연체잔액_B0M,연체잔액_일시불_B0M,연체잔액_할부_B0M
+FROM real_dataset;
 
   ```
 
-</details>
-
+RANGE+KEY 파티셔닝을 통해 만들어진 `range_key` 테이블에 대한 이미지입니다.
+<img width="1041" height="503" alt="레인지-키 파티셔닝" src="https://github.com/user-attachments/assets/8723ca74-4ea4-4f33-bbb2-b08a6744cf4e" />
 
 
 
 <br>
 
+# ⌛ 실행 코드
+`PROCEDURE`를 이용하여 파티셔닝 테이블 별 100번씩 ` 연체연도 = 2015;` 조건을 조회합니다.
+### 📌 PROCEDURE 란
+- 컴퓨터 프로그래밍에서 특정 작업을 수행하기 위해 **일련의 명령어들을 모아놓은 것**
+- 이러한 명령어 집합은 **하나의 단위로서 작동하며, 반복적으로 수행되어야 하는 작업들을 효율적으로 처리할 수 있게 해준다**
+
+
+  ```sql
+  -- 파티션 미적용 테이블
+  CREATE PROCEDURE bench_non_partitioned()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM real_dataset WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  -- LIST 파티셔닝 테이블
+  CREATE PROCEDURE bench_partitioned_list_()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM list WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  -- RANGE 파티셔닝 테이블
+  CREATE PROCEDURE bench_partitioned_range_()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM p_range WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  -- LIST + HAST 파티셔닝 테이블
+  CREATE PROCEDURE bench_partitioned_list_hash()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM list_hash WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  -- LIST + KEY 파티셔닝 테이블
+  CREATE PROCEDURE bench_partitioned_list_key()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM list_key WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  -- RANGE + HASH 파티셔닝 테이블
+  CREATE PROCEDURE bench_partitioned_range_hash()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM range_hash WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  -- RANGE + KEY 파티셔닝 테이블
+  CREATE PROCEDURE bench_partitioned_range_key()
+  BEGIN
+    DECLARE i INT DEFAULT 0;
+    WHILE i < 100 DO
+      SELECT SQL_NO_CACHE * FROM range_key WHERE 연체연도 = 2015;
+      SET i = i + 1;
+    END WHILE;
+  END;
+
+  ```
 
 
 ## 📈 성능 비교 결과
 위 파티션 테이블들을 100번 반복하여 소요된 시간을 측정해 보았습니다.
 
+
 | 실험명 | 평균 실행 시간 (s) | 성능 향상률 (%) |
 |--------|----------------------|------------------|
-| 파티셔닝 미적용 | 4.214s  | - |
+| 파티셔닝 미적용 | 18s  | - |
 | LIST 파티셔닝(list_()) | 1.101s | ▲ 73.9%  |
 | LIST+HASH(list_hash()) | 1.187s | ▲ 71.8% |
 | LIST+KEY(list_key()) | 1.104s | ▲ 73.8%  |
@@ -377,4 +491,3 @@ SUBPARTITIONS 5 (
   ✅ *문제 해결 완료*
 
 <br>
-
