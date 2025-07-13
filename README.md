@@ -643,14 +643,41 @@ CALL bench_partitioned_hash();
 
 ## 📟 파티셔닝 제작시 이슈
  
- ### ⚙️  `LIST`에서 속성 설정시 값 정의 이슈
+ ### ⚙️ `LIST`에서 속성 설정시 값 정의 이슈
 
-- **목표**  
+- **이슈**  
   LIST에 부여할 값을 연도 (2001,2002,2003...) 범위로 설정하여 적용할려고 했지만
   에러 발생했습니다.
   
 - **해결 방법**  
   연체연도 column 생성 후 해당 column을 통해 파티셔닝 진행했습니다.
+    
+  ✅ *문제 해결 완료*
+
+<br>
+
+ ### ⚙️ 파티션 테이블을 파티션 키로 조회 시 탐색하는 row의 수가 1이되는 현상
+
+- **이슈**  
+ 
+```sql
+explain analyze select * from range_hash
+where 연체연도=2000 and 발급회원번호=9945;
+```
+
+<img width="545" height="50" alt="PK 트러블 슈팅(전)" src="https://github.com/user-attachments/assets/9667496c-818f-4673-9358-e6b0d3e0eb52" /><br>
+row의 수가 서브파티션의 row(약 400개)로 출력되지 않는 이슈가 발생했습니다.
+  
+- **해결 방법**
+```sql
+explain analyze select * from range_hash
+IGNORE INDEX (PRIMARY)
+where 연체연도=2000 and 발급회원번호=9945;
+```
+
+ <img width="1316" height="50" alt="PK 트러블 슈팅(후)" src="https://github.com/user-attachments/assets/20fa270a-7c49-4347-bfe1-3a33214fa7c6" /><br>
+
+ 파티셔닝 기법만으로 성능 비교를 위해 PK 인덱스 탐색을 배제했습니다.
     
   ✅ *문제 해결 완료*
 
