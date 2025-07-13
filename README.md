@@ -1,14 +1,27 @@
 # 🧪 연체 위험도 분석
-
-MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 성능 차이를 테스트하기 위한 미니 프로젝트입니다.
+대규모 연체 이력 데이터를 기반으로 MySQL의 파티셔닝 전략(RANGE, LIST, HASH 등)을 적용하고, 전략별 쿼리 성능을 분석한 프로젝트입니다.
 
 ---
+
+### 📌 파티셔닝의 의미
+- **논리적으로는 하나의 테이블**, 물리적으로 여러 테이블로 나누어 관리하는 기법
+- **대용량 테이블을 분할하여 성능 향상 및 관리 용이성 확보** 효능이 있다.
+
 
 # 🎯 목적
 
 - MySQL 파티셔닝 기능(`RANGE`, `LIST`, `HASH`, `KEY`) 이해
 - `EXPLAIN`, `SELECT`, `INSERT` 등을 통해 파티션 분기 여부 확인
-- 파티셔닝 기능별로 성능 차이 비교 및 분석
+- 파티셔닝 기능별 `PROCEDURE`을 통해 성능 차이 비교 및 분석
+
+## ⚙️ 실험 시나리오
+
+| 조건 | 목적 |
+|------|----------|
+| 파티셔닝 미적용 | 파티셔닝 사용전의 데이터 조회 속도와 적용후의 속도차이 실험|
+|메인 파티셔닝 종류 차이 | 메인 파티셔닝 `RANGE`와`LIST`의 사용 방식에 대한 속도차이 실험|
+|하위 파티셔닝 종류 차이| 하위 파티셔닝 `HASH`와`KEY`의 사용 방식에 대한 속도차이 실험|
+
 ---
 
 # 🛠️ 테스트 환경
@@ -20,7 +33,7 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 ---
 
 # 📂 데이터 셋
-데이터 출처: https://www.aihub.or.kr
+데이터 출처: https://www.aihub.or.kr 의 금융 데이터 이용
 
 데이터 크기 : 총 100,000건 | 
 파일 크기 : 5.6MB (.csv, UTF-8 인코딩)
@@ -32,7 +45,7 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 **2. 발급회원번호 format** <br>
 발급회원번호의 값이 `SYN_0`으로 제공되어 있어 파티션의 KEY값 사용하기 위해 INT 형식으로 포멧 후 primary key 등록
 	 
-  ```
+  ```sql
 	-- SYN_0 으로 제공된 값 -> 0 으로 변경
  	UPDATE real_dataset SET 발급회원번호 = REPLACE(발급회원번호, 'SYN_', '');
 
@@ -47,56 +60,80 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 
 ### 최종 테이블 구조
 
-| 컬럼명 | 데이터 타입 | 설명글 |
+| 컬럼명 | 데이터 타입 | 데이터 형식 |
 |------|------|------|
-| 발급회원번호 | INT (PK) |------|
-| 연체연도 | INT (PK) |------|
-| 연체일자_B0M | DATE |------|
-| 남녀구분코드 | INT |------|
-| 연령 | VARCHAR(20) |------|
-| 거주시도명 | VARCHAR(20) |------|
-| 월중평잔_일시불_B0M | INT |------|
-| 연체잔액_B0M | INT |------|
-| 연체잔액_일시불_B0M | INT |------|
-| 연체잔액_할부 | INT |------|
+| 발급회원번호 | INT (PK) | 0 ,1, 2...|
+| 연체연도 | INT (PK) | 2000,2001...|
+| 연체일자_B0M | DATE |2002-02-10, 2024-10-30, ...|
+| 남녀구분코드 | INT |1(남),2(여),1(남),...|
+| 연령 | VARCHAR(20) |나이대 10대, 20대,30대,..|
+| 거주시도명 | VARCHAR(20) |서울,부산,..|
+| 월중평잔_일시불_B0M | INT |100,220 ,123,321...|
+| 연체잔액_B0M | INT |100,000 , 200,100...|
+| 연체잔액_일시불_B0M | INT |123,321...|
+| 연체잔액_할부 | INT |0, 133,122...|
 
 
 ---
 
-# 📄 파티션 테이블 생성
-## 📌 파티셔닝의 의미
-- **논리적으로는 하나의 테이블**, 물리적으로는 여러 테이블로 나누어 관리하는 기법
-- **대용량 테이블을 분할하여 성능 향상 및 관리 용이성 확보** 효능이 있다.
+# ✍️ 파티셔닝 테이블 제작
+아래 테이블 코드는 **최종 테이블 구조**를 토대로 파티셔닝기능을 추가하여 제작한  코드입니다.
 
-<br>
-
-### ✍️ 파티셔닝 테이블 제작
-아래 코드 테이블을 토대로 파티셔닝 기능에 맞게 **제작된 파티셔닝 테이블** 코드입니다.
+**LIST 파티셔닝 코드**
 <details>
-<summary>LIST + HAST</summary>
+<summary>LIST</summary>
+
+  ```sql
+  CREATE TABLE list_ (
+    발급회원번호 INT,
+    남녀구분코드 INT,
+    연령 VARCHAR(20),
+    거주시도명 VARCHAR(20),
+    월중평잔_일시불_B0M INT,
+    연체일자_B0M DATE,
+    연체연도 INT,
+    연체잔액_B0M INT,
+    연체잔액_일시불_B0M INT,
+    연체잔액_할부_B0M INT,
+    primary key(발급회원번호, 연체연도)
+)
+PARTITION BY LIST COLUMNS (연체연도) (
+    PARTITION p_2005 VALUES IN (2000, 2001, 2002, 2003, 2004, 2005),
+    PARTITION p_2010 VALUES IN (2006, 2007, 2008, 2009, 2010),
+    PARTITION p_2015 VALUES IN (2011, 2012, 2013, 2014, 2015),
+    PARTITION p_2020 VALUES IN (2016, 2017, 2018, 2019, 2020),
+    PARTITION p_2025 VALUES IN (2021, 2022, 2023, 2024, 2025)
+);
+  
+  ```
+
+</details>
+
+<details>
+<summary>LIST+HASH</summary>
   
   ```sql
-  CREATE TABLE list_hash (
-      발급회원번호 INT,
-      남녀구분코드 INT,
-      연령 VARCHAR(20),
-      거주시도명 VARCHAR(20),
-      월중평잔_일시불_B0M INT,
-      연체일자_B0M DATE,
-      연체연도 INT,
-      연체잔액_B0M INT,
-      연체잔액_일시불_B0M INT,
-      연체잔액_할부_B0M INT,
-      primary key(발급회원번호, 연체연도)
-  ) PARTITION BY LIST (연체연도)
-  	SUBPARTITION BY HASH(발급회원번호)
-  	SUBPARTITIONS 5(
-  		PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
-  		PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
-  		PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
-  		PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
-  		PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
-  	);
+ CREATE TABLE list_hash (
+    발급회원번호 INT,
+    남녀구분코드 INT,
+    연령 VARCHAR(20),
+    거주시도명 VARCHAR(20),
+    월중평잔_일시불_B0M INT,
+    연체일자_B0M DATE,
+    연체연도 INT,
+    연체잔액_B0M INT,
+    연체잔액_일시불_B0M INT,
+    연체잔액_할부_B0M INT,
+    primary key(발급회원번호, 연체연도)
+) PARTITION BY LIST (연체연도)
+   SUBPARTITION BY HASH(발급회원번호)
+   SUBPARTITIONS 5(
+      PARTITION P2005 VALUES IN (2000,2001, 2002, 2003, 2004),
+      PARTITION P2010 VALUES IN (2005, 2006, 2007, 2008, 2009),
+      PARTITION P2015 VALUES IN (2010, 2011, 2012, 2013, 2014),
+      PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
+      PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
+   );
   
   ```
 
@@ -104,16 +141,16 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
 
 
 <details>
-<summary>LIST + KEY</summary>
+<summary>LIST+KEY</summary>
   
   ```sql
-  CREATE TABLE list_key (
+ CREATE TABLE list_key (
     발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
     거주시도명 VARCHAR(20),
     월중평잔_일시불_B0M INT,
-    연체일자_B0M DATE,
+    연체일자_B0M date,
     연체연도 INT,
     연체잔액_B0M INT,
     연체잔액_일시불_B0M INT,
@@ -130,14 +167,48 @@ MySQL의 `PARTITION BY` 구문을 실습하며 파티셔닝의 동작 원리와 
    );
   
   ```
+
+생성된 LIST+KEY 파티션 확인 표
+<img width="887" height="298" alt="Image" src="https://github.com/user-attachments/assets/7ebae2ae-4e38-469e-9338-9aaa6b3c83a2" />
 </details>
 
+---
+
+**RANGE 파티셔닝 코드**
+<details>
+<summary>RANGE</summary>
+
+  ```sql
+  CREATE TABLE range_ (
+    발급회원번호 INT,
+     남녀구분코드 INT,
+     연령 VARCHAR(20),
+     거주시도명 VARCHAR(20),
+     월중평잔_일시불_B0M INT,
+     연체일자_B0M DATE,
+     연체연도 INT, 
+     연체잔액_B0M INT,
+     연체잔액_일시불_B0M INT,
+     연체잔액_할부_B0M INT,
+    PRIMARY KEY (발급회원번호, 연체연도)
+)
+PARTITION BY RANGE (연체연도) (
+    PARTITION p_2005 VALUES LESS THAN (2005),
+    PARTITION p_2010 VALUES LESS THAN (2010), 
+    PARTITION p_2015 VALUES LESS THAN (2015),
+    PARTITION p_2020 VALUES LESS THAN (2020),
+    PARTITION p_critical VALUES LESS THAN MAXVALUE
+);
+  
+  ```
+
+</details>
 
 <details>
-<summary>RANGE + HASH</summary>
+<summary>RANGE+HASH</summary>
   
   ```sql
-  CREATE TABLE range_hash (
+ CREATE TABLE range_hash (
   	발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
@@ -161,14 +232,15 @@ SUBPARTITIONS 5 (
 );
   
   ```
+
 </details>
 
 
 <details>
-<summary>RANGE + KEY</summary>
+<summary>RANGE+KEY</summary>
   
   ```sql
-  CREATE TABLE range_key (
+ CREATE TABLE range_key (
   	발급회원번호 INT,
     남녀구분코드 INT,
     연령 VARCHAR(20),
@@ -190,40 +262,36 @@ SUBPARTITIONS 5 (
     PARTITION P2020 VALUES IN (2015, 2016, 2017, 2018, 2019),
     PARTITION P2025 VALUES IN (2020, 2021, 2022, 2023, 2024, 2025)
 );
-  
+
   ```
+
 </details>
 
+
+
+
 <br>
 
-# 📢 분석
 
-<img width="887" height="298" alt="Image" src="https://github.com/user-attachments/assets/7ebae2ae-4e38-469e-9338-9aaa6b3c83a2" /><br>
-파티션 테이블에서 조회 결과
+
+## 📈 성능 비교 결과
+위 파티션 테이블들을 100번 반복하여 소요된 시간을 측정해 보았습니다.
+
+| 실험명 | 평균 실행 시간 (s) | 성능 향상률 (%) |
+|--------|----------------------|------------------|
+| 파티셔닝 미적용 | 4.214s  | - |
+| LIST 파티셔닝(list_()) | 1.101s | ▲ 73.9%  |
+| LIST+HASH(list_hash()) | 1.187s | ▲ 71.8% |
+| LIST+KEY(list_key()) | 1.104s | ▲ 73.8%  |
+| RANGE 파티셔닝(range_()) | 1.390s | ▲ 67.0%  |
+| RANGE+HASH(range_hash()) | 1.081s | ▲ 74.3% |
+| RANGE+KEY(range_key()) | 1.142s | ▲ 72.9%  |
+
+
+> 🔍 **고찰**: 가장 높은 향상률은 RANGE + HASH (74.3%), 성능 최적화 측면에서 가장 효율적이었음을 보여줍니다.
+
 <br>
-각 코드별 테스트
-<br>
-<img width="452" height="118" alt="Image" src="https://github.com/user-attachments/assets/b07b65a0-02a4-4b66-80d3-617e98f70cbd" />
-<br>
-해당 코드를 통해 쿼리문을 100번 반복하여 소요된 시간을 측정
-<br>
-LIST<br>
-<img width="670" height="16" alt="Image" src="https://github.com/user-attachments/assets/784a36af-89f0-4beb-839e-d5200672e98d" />
-<br>
-RANGE<br>
-<img width="669" height="19" alt="Image" src="https://github.com/user-attachments/assets/c2148f1c-9d98-46a0-b742-52b91fe60e46" />
-<br>
-LIST + HASH<br>
-<img width="673" height="21" alt="Image" src="https://github.com/user-attachments/assets/58cae26d-b946-423f-bfc7-e7fcbaca81ef" />
-<br>
-LIST + KEY<br>
-<img width="676" height="19" alt="Image" src="https://github.com/user-attachments/assets/8ede0c1c-51e8-4e5d-b2af-e64d5df99b5a" />
-<br>
-RANGE + HASH<br>
-<img width="679" height="18" alt="Image" src="https://github.com/user-attachments/assets/b6061047-406a-4e62-8089-22914795e21f" />
-<br>
-RANGE + KEY<br><img width="671" height="19" alt="Image" src="https://github.com/user-attachments/assets/2fd0d4f4-0e7d-4191-9f00-77bee4790fd1" />
-<br>
+
 # 🚀 트러블 슈팅
 
 ## 🧠아이디어 정하기
